@@ -1,0 +1,6 @@
+{
+ :plugin "rabbitmq-plugin"
+ :require riemann-rabbitmq-plugin.core
+ :title "A plugin for consuming messages from RabbitMQ"
+ :git-repo "https://github.com/avishai-ish-shalom/riemann-rabbitmq-plugin"
+}
