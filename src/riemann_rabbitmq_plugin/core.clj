@@ -111,4 +111,5 @@
   (let [pool (publisher/get-pool (:pool-opts opts))]
     (fn [event]
       (with-pool [publisher-client pool (get opts :claim-timeout 5)]
-        (publisher/publish publisher-client exchange routing-key (encoding-fn event) message-opts)))))
+        (let [routing-key (if (fn? routing-key (routing-key event) routing-key))]
+          (publisher/publish publisher-client exchange routing-key (encoding-fn event) message-opts))))))
