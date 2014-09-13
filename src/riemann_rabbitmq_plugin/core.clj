@@ -1,5 +1,4 @@
 (ns riemann-rabbitmq-plugin.core
-  (:import [java.util.concurrent Executors])
   (:require
    [langohr.core       :as rmq]
    [langohr.channel    :as lch]
@@ -12,7 +11,8 @@
    [clojure.string     :as string]
    [cheshire.core      :as json]
    [riemann.config     :refer [service!]]
-   ))
+   [riemann.pool       :refer [with-pool]]
+   [riemann-rabbitmq-plugin.publisher :as publisher]))
 
 (def mandatory-opts [:exchange])
 (def default-opts {:prefetch-count 100 :queue-name "" :binding-keys ["#"] :connection-opts {}
@@ -85,7 +85,30 @@
              (reset! killer nil)))))
 
 (defn amqp-consumer
-	"Create an AMQP consumer instance"
+	"Create an AMQP consumer instance. Usage:
+  (amqp-consumer {:parser-fn #(cheshire.core/parse-string (String. %) true) :connection-opts {:host \"rabbitmq.example.com\" :port 5672} :queue-name \"some-q\" :queue-opts {:durable true :auto-delete false} :exchange \"events\" :prefetch-count 100 :binding-keys [\"#\"]})
+
+  Options:
+
+  :connection-opts Langhor connection options, see langohr.core/connect
+
+  :queue-name The queue to declare and consume from. Empty string means auto generated queue name (anonymous queue)
+
+  :queue-opts Queue options, see langohr.queue/declare
+
+  :exchange AMQP exchange to bind to
+
+  :binding-keys routing keys to use when binding the queue to the exchange
+
+  :parser-fn A function to parse raw messages to clojure maps with valid keys. function signature is (parser-fn [^bytes message])"
 	[opts]
   {:pre [(every? opts mandatory-opts)]}
   (service! (AMQInput. (merge default-opts opts) (atom nil) (atom nil))))
+
+(defn amqp-publisher [{:keys [exchange routing-key encoding-fn message-opts] :as opts}]
+  {:pre [(every? opts [:exchange :routing-key :encoding-fn])
+         (fn? encoding-fn)]}
+  (let [pool (publisher/get-pool (:pool-opts opts))]
+    (fn [event]
+      (with-pool [publisher-client pool (get opts :claim-timeout 5)]
+        (publisher/publish publisher-client exchange routing-key (encoding-fn event) message-opts)))))
