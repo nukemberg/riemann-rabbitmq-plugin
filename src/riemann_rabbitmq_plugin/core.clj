@@ -14,13 +14,13 @@
    [riemann.pool       :refer [with-pool]]
    [riemann-rabbitmq-plugin.publisher :as publisher]))
 
-(def mandatory-opts [:exchange])
-(def default-opts {:prefetch-count 100 :queue-name "" :binding-keys ["#"] :connection-opts {}
+(def mandatory-opts [:bindings])
+(def default-opts {:prefetch-count 100 :connection-opts {}
                    :parser-fn #(json/parse-string (String. %) true)})
 
 (defn- parse-message
   "Safely run the parser function and verify the resulting event"
-  [parser-fn message]
+  [parser-fn ^bytes message]
   (debug "Parsing message with parser function" (String. message))
   (try
     (let [event (parser-fn message)]
@@ -33,7 +33,7 @@
       (warn e "Failed to parse message"))))
 
 
-(defn- message-handler
+(defn- ^{:testable true} message-handler
   "AMQP Consumer message handler. Will ack messages after submitting to riemann core and reject unparsable messages"
   [parser-fn core ^com.rabbitmq.client.Channel ch {delivery-tag :delivery-tag :as props} ^bytes payload]
   (let [event (parse-message parser-fn payload)]
@@ -47,7 +47,7 @@
             (lb/reject ch delivery-tag false))
           )))
 
-(defrecord AMQInput [opts core killer]
+(defrecord AMQPInput [opts core killer]
   ServiceEquiv
   (equiv? [this {other-opts :opts}]
     (= opts other-opts))
@@ -59,19 +59,21 @@
     (locking this
       (when-not @killer
         (debug "Openning new RabbitMQ connection")
-        (let [{:keys [parser-fn queue-name exchange queue-opts connection-opts prefetch-count binding-keys]
+        (let [{:keys [parser-fn bindings exchange connection-opts prefetch-count]
                :as opts
               } opts
               conn (rmq/connect connection-opts)
               ch (lch/open conn)
-              {:keys [queue]} (lq/declare ch queue-name queue-opts)
              ]
           (lb/qos ch prefetch-count)
-          (doseq [binding-key binding-keys]
-            (infof "binding queue %s to exchange %s with key %s" queue exchange binding-key)
-            (lq/bind ch queue-name exchange {:routing-key binding-key}))
-          (info "Starting RabbitMQ consumer thread")
-          (lc/subscribe ch queue (partial message-handler parser-fn core))
+          (doseq [binding-spec bindings]
+            (let [queue-name (:queue (lq/declare ch (get binding-spec :queue "") (get binding-spec :opts {:auto-delete true :exclusive true})))]
+              (doseq [[exchange binding-keys] (:bind-to binding-spec)
+                      binding-key (if (seq binding-keys) binding-keys [binding-keys])]
+                (infof "binding queue %s to exchange %s with key %s" queue-name exchange binding-key)
+                (lq/bind ch queue-name exchange {:routing-key binding-key}))
+              (info "Starting RabbitMQ consumer thread")
+              (lc/subscribe ch queue-name (partial message-handler parser-fn core))))
           (reset! killer (fn []
                            (try
                              (when (lch/open? ch) (lch/close ch))
@@ -102,8 +104,10 @@
 
   :parser-fn A function to parse raw messages to clojure maps with valid keys. function signature is (parser-fn [^bytes message])"
 	[opts]
-  {:pre [(every? opts mandatory-opts)]}
-  (service! (AMQInput. (merge default-opts opts) (atom nil) (atom nil))))
+  {:pre [(every? opts mandatory-opts)
+         (seq? (:bindings opts))
+         (every? (comp not nil?) (map :exchange (:bindings opts)))]}
+  (service! (AMQPInput. (merge default-opts opts) (atom nil) (atom nil))))
 
 (defn amqp-publisher [{:keys [exchange routing-key encoding-fn message-opts] :as opts}]
   {:pre [(every? opts [:exchange :routing-key :encoding-fn])
@@ -111,5 +115,5 @@
   (let [pool (publisher/get-pool (:pool-opts opts))]
     (fn [event]
       (with-pool [publisher-client pool (get opts :claim-timeout 5)]
-        (let [routing-key (if (fn? routing-key (routing-key event) routing-key))]
+        (let [routing-key (if (fn? routing-key) (routing-key event) routing-key)]
           (publisher/publish publisher-client exchange routing-key (encoding-fn event) message-opts))))))

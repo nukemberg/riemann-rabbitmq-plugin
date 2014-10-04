@@ -11,11 +11,13 @@ In your riemann.config
 (load-plugins) ; will load plugins from the classpath
 
 (rabbitmq-plugin/rabbitmq-consumer {
-                       :exchange "messages-exchange" ; this is a mandatory parameter
                        :parser-fn #(json/parse-string (String. %) true) ; message parsing function, the sample function here is the default
                        :prefetch-count 100 ; this is the default
-                       :queue-name "" ; the default is "" which means auto-generated queue name
-                       :queue-opts {:durable false :auto-delete true} ; this is the default
+                       :bindings {
+                         :opts {:durable false :auto-delete true} ; this is the default
+                         :queue "" ; the default is "" which means auto-generated queue name
+                         :bind-to {"exchange", ["binding-key"]} ; also works with single non-seq binding key
+                       }
                        :connection-opts {:host "rabbitmq-host" :port 5672 :username "guest" :passowrd "guest"} ; default is {}
                        })
 

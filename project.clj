@@ -4,6 +4,6 @@
                  [com.novemberain/langohr "3.0.0-rc2"]
                  ]
   :plugins [[lein-midje "3.0.0"]]
-  :profiles {:dev {:dependencies [[midje "1.5.1"]
+  :profiles {:dev {:dependencies [[midje "1.6.3"]
                                   [riemann "0.2.6"]
                                   ]}})
