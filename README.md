@@ -1,5 +1,7 @@
 # riemann-rabbitmq-plugin
 
+[![Build Status](https://travis-ci.org/avishai-ish-shalom/riemann-rabbitmq-plugin.svg?branch=master)](https://travis-ci.org/avishai-ish-shalom/riemann-rabbitmq-plugin)
+
 A riemann RabbitMQ plugin. Usefull to listen to messages on an AMQP transport (e.g. graphite or logging events)
 
 ## Usage
