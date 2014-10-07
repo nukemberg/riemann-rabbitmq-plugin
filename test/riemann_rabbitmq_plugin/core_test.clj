@@ -27,7 +27,8 @@ So, TODO: refactor the code to make it easier for testing or move to core.testin
 
 (facts "about `AMQPInput` record"
        (let [prefetch-count (long (* (rand) 10000))
-             bindings [{:queue "" :bind-to {..exchange.. [..binding-key..]}}]
+             bindings [{:queue "" :bind-to {..exchange.. [..binding-key..]}}
+                       {:queue ..queue1.. :bind-to {..exchange2.. [..binding-key2.. ..binding-key3..]}}]
              amqp-input (->AMQPInput {:connection-opts ..connection-opts.. :bindings bindings :prefetch-count prefetch-count} (atom nil) (atom nil))]
          (fact "`start!` binds multiple queues with multiple bindings"
                (with-redefs [lb/qos (fn [ch ^long prefetch-count] nil)]
@@ -36,8 +37,12 @@ So, TODO: refactor the code to make it easier for testing or move to core.testin
                   (rmq/connect ..connection-opts..) => ..conn..
                   (lch/open ..conn..) => ..ch..
                   (lq/declare ..ch.. "" {:exclusive true :auto-delete true}) => {:queue ..queue..}
+                  (lq/declare ..ch.. ..queue1.. {:exclusive true :auto-delete true}) => {:queue ..queue1..}
                   (lq/bind ..ch.. ..queue.. ..exchange.. {:routing-key ..binding-key..}) => nil
-                  (lc/subscribe ..ch.. ..queue.. anything) => nil)))))
+                  (lq/bind ..ch.. ..queue1.. ..exchange2.. {:routing-key ..binding-key2..}) => nil
+                  (lq/bind ..ch.. ..queue1.. ..exchange2.. {:routing-key ..binding-key3..}) => nil
+                  (lc/subscribe ..ch.. ..queue.. anything) => nil
+                  (lc/subscribe ..ch.. ..queue1.. anything) => nil)))))
 
 (facts "about `message-handler`"
        (let [ack-called (atom false)
