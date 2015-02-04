@@ -105,8 +105,8 @@
   :parser-fn A function to parse raw messages to clojure maps with valid keys. function signature is (parser-fn [^bytes message])"
 	[opts]
   {:pre [(every? opts mandatory-opts)
-         (seq? (:bindings opts))
-         (every? (comp not nil?) (map :exchange (:bindings opts)))]}
+         (sequential? (:bindings opts))
+         (every? map? (map :bind-to (:bindings opts)))]}
   (service! (AMQPInput. (merge default-opts opts) (atom nil) (atom nil))))
 
 (defn amqp-publisher [{:keys [exchange routing-key encoding-fn message-opts] :as opts}]

@@ -3,6 +3,7 @@
         [midje.util :only [expose-testables]])
   (:require [riemann-rabbitmq-plugin.core :refer :all]
             [riemann.service    :as service]
+            [riemann.config :refer [service!]]
             [riemann.core       :as core]
             [riemann.logging    :as logging]
             [langohr.core       :as rmq]
@@ -62,3 +63,18 @@ So, TODO: refactor the code to make it easier for testing or move to core.testin
                  (provided
                    ..props.. =contains=> {:delivery-tag delivery-tag}
                   (--parser-fn-- payload) => nil)))))
+
+(fact "`amqp-consumer` pre checks are satisfied by the example"
+       (amqp-consumer {
+                       :parser-fn #(String. %)
+                       :prefetch-count 100
+                       :bindings [{
+                                   :opts {:durable false :auto-delete true}
+                                   :queue ""
+                                   :bind-to {"exchange", ["binding-key"]}
+                                   }]
+                       :connection-opts {:host "rabbitmq-host" :port 5672 :username "guest" :passowrd "guest"}
+                       }
+                      ) => nil
+         (provided
+           (service! (checker [rec] (satisfies? service/Service rec))) => nil))
