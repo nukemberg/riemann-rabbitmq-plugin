@@ -8,6 +8,7 @@
    [riemann.core       :as core]
    [riemann.service    :refer [Service ServiceEquiv]]
    [riemann.time       :refer [unix-time]]
+   [riemann.common     :refer [iso8601->unix]]
    [clojure.tools.logging :refer [warn error info infof debug]]
    [clojure.string     :as string]
    [cheshire.core      :as json]
@@ -15,9 +16,15 @@
    [riemann.pool       :refer [with-pool]]
    [riemann-rabbitmq-plugin.publisher :as publisher]))
 
+(defn logstash-parser [^bytes payload]
+  (let [msg (-> payload
+                String.
+                (json/parse-string true))]
+    (assoc msg :time (iso8601->unix (get msg (keyword "@timestamp"))))))
+
 (def mandatory-opts [:bindings])
 (def default-opts {:prefetch-count 100 :connection-opts {}
-                   :parser-fn #(json/parse-string (String. %) true)})
+                   :parser-fn logstash-parser})
 
 (defn- ^{:testable true} parse-message
   "Safely run the parser function and verify the resulting event"
