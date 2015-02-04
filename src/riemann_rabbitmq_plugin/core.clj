@@ -19,12 +19,13 @@
 (def default-opts {:prefetch-count 100 :connection-opts {}
                    :parser-fn #(json/parse-string (String. %) true)})
 
-(defn- parse-message
+(defn- ^{:testable true} parse-message
   "Safely run the parser function and verify the resulting event"
   [parser-fn ^bytes message]
   (debug "Parsing message with parser function" (String. message))
   (try
     (let [event (parser-fn message)]
+      (infof "event time %s" (:time event))
       (if (and (instance? clojure.lang.Associative event) (every? keyword? (keys event)))
         (if (number? (:time event)) event
             (assoc event :time (unix-time)))

@@ -6,6 +6,7 @@
             [riemann.config :refer [service!]]
             [riemann.core       :as core]
             [riemann.logging    :as logging]
+            [riemann.time       :refer [unix-time]]
             [langohr.core       :as rmq]
             [langohr.channel    :as lch]
             [langohr.queue      :as lq]
@@ -48,6 +49,7 @@ So, TODO: refactor the code to make it easier for testing or move to core.testin
 (facts "about `message-handler`"
        (let [ack-called (atom false)
              payload (byte-array (map int "test"))
+             event {:time 12345678 :host nil :service nil}
              delivery-tag (rand-int 100000)]
          (fact "calls core/stream! when event is correctly parsed"
                (with-redefs [lb/ack (fn [ch ^long delivery-tag] (reset! ack-called delivery-tag) nil)]
@@ -55,8 +57,8 @@ So, TODO: refactor the code to make it easier for testing or move to core.testin
                  (provided
                   ..props.. =contains=> {:delivery-tag delivery-tag}
                   ;(lb/ack ..ch.. ..delivery-tag..) => nil
-                  (--parser-fn-- payload) => ..event..
-                  (core/stream! ..core.. ..event..) => nil)))
+                  (--parser-fn-- payload) => event
+                  (core/stream! ..core.. event) => nil)))
          (fact "when event isn't correctly parsed, don't call `core/stream!` and reject the message"
                (with-redefs [lb/reject (fn [ch ^long delivery-tag requeue] nil)]
                  (message-handler --parser-fn-- (atom ..core..) ..ch.. ..props.. payload) => nil
@@ -78,3 +80,13 @@ So, TODO: refactor the code to make it easier for testing or move to core.testin
                       ) => nil
          (provided
            (service! (checker [rec] (satisfies? service/Service rec))) => nil))
+
+(facts "about `parse-message`"
+       (let [payload (byte-array (map int "test"))]
+         (fact "returns nil if parser-fn return a non associate object"
+               (parse-message (fn [p] "dddd") (byte-array 1)) => nil)
+         (fact "returns nil when parser-fn throws an exception"
+               (parse-message (fn [_] (throw (Exception. "test"))) (byte-array 1)) => nil)
+         (fact "auto fill current time if event doesn't contain :time"
+               (parse-message (fn [_] {:host nil}) payload) => {:host nil :time ..time..}
+               (provided (unix-time) => ..time..))))
