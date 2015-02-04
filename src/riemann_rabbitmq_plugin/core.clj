@@ -7,6 +7,7 @@
    [langohr.basic      :as lb]
    [riemann.core       :as core]
    [riemann.service    :refer [Service ServiceEquiv]]
+   [riemann.time       :refer [unix-time]]
    [clojure.tools.logging :refer [warn error info infof debug]]
    [clojure.string     :as string]
    [cheshire.core      :as json]
@@ -25,7 +26,8 @@
   (try
     (let [event (parser-fn message)]
       (if (and (instance? clojure.lang.Associative event) (every? keyword? (keys event)))
-        event
+        (if (number? (:time event)) event
+            (assoc event :time (unix-time)))
         (do
           (warn "Check yer parser, message not parsed to a proper map like object. Dropping" event)
           nil)))
