@@ -93,16 +93,17 @@ So, TODO: refactor the code to make it easier for testing or move to core.testin
 (facts "about `parse-message`"
        (let [payload (byte-array (map int "test"))]
          (fact "returns nil if parser-fn return a non associate object"
-               (parse-message (fn [p] "dddd") (byte-array 1)) => nil)
+               (parse-message (fn [_] "dddd") payload) => nil
+               (parse-message (fn [_] 23123) payload) => nil)
          (fact "returns nil when parser-fn throws an exception"
-               (parse-message (fn [_] (throw (Exception. "test"))) (byte-array 1)) => nil)
+               (parse-message (fn [_] (throw (Exception. "test exception"))) payload) => nil)
          (fact "auto fill current time if event doesn't contain :time"
                (parse-message (fn [_] {:host nil}) payload) => {:host nil :time ..time..}
                (provided (unix-time) => ..time..))))
 
 (facts "about `logstash-parser`"
        (fact "parses message"
-             (let [msg "{ \"tags\": [], \"type\": \"logstash\", \"@version\": \"1\", \"@timestamp\": \"2015-02-05T08:19:22.152Z\", \"source_host\": \"some-host\", \"message\": \"whatever\" }"]
+             (let [msg (byte-array (map int "{ \"tags\": [], \"type\": \"logstash\", \"@version\": \"1\", \"@timestamp\": \"2015-02-05T08:19:22.152Z\", \"source_host\": \"some-host\", \"message\": \"whatever\" }"))]
                (logstash-parser msg)) =contains=> {:tags []
                                           :time 1423124362
                                           :source_host "some-host"
@@ -110,5 +111,5 @@ So, TODO: refactor the code to make it easier for testing or move to core.testin
                                           (keyword "@version") "1"
                                                    :type "logstash"})
        (fact "parses message with bad tags"
-             (let [msg "{ \"tags\": \"bad-tag\", \"type\": \"logstash\", \"@version\": \"1\", \"@timestamp\": \"2015-02-05T08:19:22.152Z\", \"source_host\": \"some-host\", \"message\": \"whatever\" }"]
+             (let [msg (byte-array (map int "{ \"tags\": \"bad-tag\", \"type\": \"logstash\", \"@version\": \"1\", \"@timestamp\": \"2015-02-05T08:19:22.152Z\", \"source_host\": \"some-host\", \"message\": \"whatever\" }"))]
                (logstash-parser msg) =contains=> {:tags ["bad-tag"]})))

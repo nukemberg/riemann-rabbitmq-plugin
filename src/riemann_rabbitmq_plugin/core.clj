@@ -17,7 +17,7 @@
    [riemann-rabbitmq-plugin.publisher :as publisher]))
 
 (defn logstash-parser [^bytes payload]
-  (letfn [(parse-json [^bytes p] (json/parse-string p true))
+  (letfn [(parse-json [p] (json/parse-string p true))
           (fix-time [msg] (assoc msg :time (iso8601->unix (get msg (keyword "@timestamp")))))
           (ensure-tag-vec [event] (if (sequential? (:tags event))
                                     event
