@@ -126,7 +126,7 @@
          (every? map? (map :bind-to (:bindings opts)))]}
   (service! (AMQPInput. (merge default-opts opts) (atom nil) (atom nil))))
 
-(defn amqp-publisher [{:keys [exchange routing-key encoding-fn message-opts] :as opts}]
+(defn amqp-publisher
   "Create an AMQP publisher stream.
 
 (let [amqp (amqp-publisher {:exchange \"events\" :routing-key #(str (:host %) \".\" (:service %)) :encoding-fn cheshire.core/generate-string :message-opts {:persistent false}))]
@@ -140,6 +140,7 @@ options:
 :routing-key - the routing key to use when publishing. Can be a function or a string
 :encoding-fn - a function which will be used to encode the output. encoding-fn recieves a single map object (a riemann event map) and must return an encoded byte array.
 "
+  [{:keys [exchange routing-key encoding-fn message-opts] :as opts}]
   {:pre [(every? opts [:exchange :routing-key :encoding-fn])
          (fn? encoding-fn)]}
   (let [pool (publisher/get-pool (:pool-opts opts))]
