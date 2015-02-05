@@ -32,7 +32,6 @@
   (debug "Parsing message with parser function" (String. message))
   (try
     (let [event (parser-fn message)]
-      (infof "event time %s" (:time event))
       (if (and (instance? clojure.lang.Associative event) (every? keyword? (keys event)))
         (if (number? (:time event)) event
             (assoc event :time (unix-time)))
