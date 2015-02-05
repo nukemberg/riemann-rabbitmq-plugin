@@ -1,19 +1,17 @@
 <!DOCTYPE html>
 <html><head><link href="css/default.css" rel="stylesheet" type="text/css"><script src="js/jquery.min.js" type="text/javascript"></script><script src="js/page_effects.js" type="text/javascript"></script><title>riemann-rabbitmq-plugin.core documentation</title></head><body><div id="header"><h1><a href="index.html">Riemann-rabbitmq-plugin 0.0.1-SNAPSHOT API documentation</a></h1></div><div class="sidebar" id="namespaces"><h3><span>Namespaces</span></h3><ul><li class="current"><a href="riemann-rabbitmq-plugin.core.html"><span>riemann-rabbitmq-plugin.core</span></a></li><li><a href="riemann-rabbitmq-plugin.publisher.html"><span>riemann-rabbitmq-plugin.publisher</span></a></li></ul></div><div class="sidebar" id="vars"><h3>Public Vars</h3><ul><li><a href="riemann-rabbitmq-plugin.core.html#var--%3EAMQPInput"><span>-&gt;AMQPInput</span></a></li><li><a href="riemann-rabbitmq-plugin.core.html#var-amqp-consumer"><span>amqp-consumer</span></a></li><li><a href="riemann-rabbitmq-plugin.core.html#var-map-%3EAMQPInput"><span>map-&gt;AMQPInput</span></a></li></ul></div><div class="namespace-docs" id="content"><h2>riemann-rabbitmq-plugin.core documentation</h2><pre class="doc"></pre><div class="public" id="var--%3EAMQPInput"><h3>-&gt;AMQPInput</h3><div class="usage"><code>(-&gt;AMQPInput opts core killer)</code></div><pre class="doc">Positional factory function for class riemann_rabbitmq_plugin.core.AMQPInput.
 </pre></div><div class="public" id="var-amqp-consumer"><h3>amqp-consumer</h3><div class="usage"><code>(amqp-consumer opts)</code></div><pre class="doc">Create an AMQP consumer instance. Usage:
-(amqp-consumer {:parser-fn #(cheshire.core/parse-string (String. %) true) :connection-opts {:host &quot;rabbitmq.example.com&quot; :port 5672} :queue-name &quot;some-q&quot; :queue-opts {:durable true :auto-delete false} :exchange &quot;events&quot; :prefetch-count 100 :binding-keys [&quot;#&quot;]})
+(amqp-consumer {:parser-fn logstash-parser :connection-opts {:host &quot;rabbitmq.example.com&quot; :port 5672} :prefetch-count 100 :bindings [{:queue &quot;riemann&quot; :bind-to {&quot;logs-exchange&quot; [&quot;#&quot;] :opts {:durable false}}]})
 
 Options:
 
-:connection-opts Langhor connection options, see langohr.core/connect
+:connection-opts Langhor connection options, see langohr.core/connect for more info
+:bindings a list/vector of binding specs
+:parser-fn A function to parse raw messages to clojure maps with valid keys. function signature is (parser-fn [^bytes message]), defaults to `logstash-parser`
+:prefetch-count - the number of messages to prefetch
 
-:queue-name The queue to declare and consume from. Empty string means auto generated queue name (anonymous queue)
-
-:queue-opts Queue options, see langohr.queue/declare
-
-:exchange AMQP exchange to bind to
-
-:binding-keys routing keys to use when binding the queue to the exchange
-
-:parser-fn A function to parse raw messages to clojure maps with valid keys. function signature is (parser-fn [^bytes message])</pre></div><div class="public" id="var-map-%3EAMQPInput"><h3>map-&gt;AMQPInput</h3><div class="usage"><code>(map-&gt;AMQPInput m__5869__auto__)</code></div><pre class="doc">Factory function for class riemann_rabbitmq_plugin.core.AMQPInput, taking a map of keywords to field values.
+binding specs: a map with binding specifications:
+:queue - the queue name to use. if empty an auto-generated queue name will be used
+:opts - options to use when declaring the queue. See langohr docs for details.  e.g. {:auto-delete false, :durable true, :exclusive false}
+:bind-to - a map of exchange -&gt; [binding-keys] pairs. E.g. {&quot;exchange-name&quot; [&quot;logs.#&quot;]}</pre></div><div class="public" id="var-map-%3EAMQPInput"><h3>map-&gt;AMQPInput</h3><div class="usage"><code>(map-&gt;AMQPInput m__5869__auto__)</code></div><pre class="doc">Factory function for class riemann_rabbitmq_plugin.core.AMQPInput, taking a map of keywords to field values.
 </pre></div></div></body></html>
