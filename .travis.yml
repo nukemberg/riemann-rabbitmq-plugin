@@ -1,5 +1,26 @@
 language: clojure
 lein: lein2
 script: lein midje
-jdk: 
-    - openjdk7
+jdk:
+- openjdk7
+branches:
+  except:
+  - gh-pages
+env:
+  global:
+  - GH_REF: github.com/avishai-ish-shalom/riemann-rabbitmq-plugin.git
+  - secure: WPkiWgUwOyotD61+xcbZwmL1M0GX6J3a2mGKrM3DpI9JC4t3sayuP9htK98ZAa0p95i7fAoq5unW/OKV7NrLVyB3cudwvg6CTTLHDDzrSYO6XfzXoMFqUaXD8W1/qi+iuK6oqe59VvclsjZlmz1ADHt6mP3i0JttqpqkvUmQH1I=
+
+after_script: |
+  if [ "${TRAVIS_PULL_REQUEST}" = "false" ]; then
+    git clone --branch=gh-pages "https://${GH_TOKEN}@${GH_REF}" doc
+    lein doc
+    cd doc
+    git add -u
+    git config user.name "Travis Builder"
+    git config user.email "builder@travis.com"
+    if git diff-index HEAD; then
+      git commit -m "Automatic doc build ${TRAVIS_BUILD_NUMBER}"
+      git push --force --quiet "https://${GH_TOKEN}@${GH_REF}" gh-pages
+    fi
+  fi

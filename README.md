@@ -13,17 +13,22 @@ In your riemann.config
 (load-plugins) ; will load plugins from the classpath
 
 (rabbitmq-plugin/rabbitmq-consumer {
-                       :parser-fn #(json/parse-string (String. %) true) ; message parsing function, the sample function here is the default
+                       :parser-fn rabbitmq-plugin/logstash-parser true) ; message parsing function, the sample function here is the default
                        :prefetch-count 100 ; this is the default
                        :bindings [{
                          :opts {:durable false :auto-delete true} ; this is the default
                          :queue "" ; the default is "" which means auto-generated queue name
                          :bind-to {"exchange", ["binding-key"]} ; also works with single non-seq binding key
+                         :tags ["amqp"] ; will be added to event tags
                        }]
                        :connection-opts {:host "rabbitmq-host" :port 5672 :username "guest" :passowrd "guest"} ; default is {}
                        })
 
 ```
+
+The `logstash-parser` function will parse a logstash v1 or v0 formatted messages as riemann events. Note that :service or :host will not be extracted automatically if the field names in the message are different.
+
+See the [API docs](http://avishai-ish-shalom.github.io/riemann-rabbitmq-plugin) for more info.
 
 ## Installing
 
