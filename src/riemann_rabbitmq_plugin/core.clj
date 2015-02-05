@@ -17,6 +17,7 @@
    [riemann-rabbitmq-plugin.publisher :as publisher]))
 
 (defn logstash-parser [^bytes payload]
+  "A parser function for the Logstash v1 format. Recieves a byte array of json encoded data and returns a map suitable for use with riemann"
   (letfn [(parse-json [p] (json/parse-string p true))
           (fix-time [msg] (assoc msg :time (iso8601->unix (get msg (keyword "@timestamp")))))
           (ensure-tag-vec [event] (if (sequential? (:tags event))
@@ -104,22 +105,21 @@
              (reset! killer nil)))))
 
 (defn amqp-consumer
-	"Create an AMQP consumer instance. Usage:
-  (amqp-consumer {:parser-fn #(cheshire.core/parse-string (String. %) true) :connection-opts {:host \"rabbitmq.example.com\" :port 5672} :queue-name \"some-q\" :queue-opts {:durable true :auto-delete false} :exchange \"events\" :prefetch-count 100 :binding-keys [\"#\"]})
+  "Create an AMQP consumer instance. Usage:
+  (amqp-consumer {:parser-fn logstash-parser :connection-opts {:host \"rabbitmq.example.com\" :port 5672} :prefetch-count 100 :bindings [{:queue \"riemann\" :bind-to {\"logs-exchange\" [\"#\"] :opts {:durable false}}]})
 
   Options:
 
-  :connection-opts Langhor connection options, see langohr.core/connect
+  :connection-opts Langhor connection options, see langohr.core/connect for more info
+  :bindings a list/vector of binding specs
+  :parser-fn A function to parse raw messages to clojure maps with valid keys. function signature is (parser-fn [^bytes message]), defaults to `logstash-parser`
+  :prefetch-count - the number of messages to prefetch
 
-  :queue-name The queue to declare and consume from. Empty string means auto generated queue name (anonymous queue)
-
-  :queue-opts Queue options, see langohr.queue/declare
-
-  :exchange AMQP exchange to bind to
-
-  :binding-keys routing keys to use when binding the queue to the exchange
-
-  :parser-fn A function to parse raw messages to clojure maps with valid keys. function signature is (parser-fn [^bytes message])"
+  binding specs: a map with binding specifications:
+  :queue - the queue name to use. if empty an auto-generated queue name will be used
+  :opts - options to use when declaring the queue. See langohr docs for details.  e.g. {:auto-delete false, :durable true, :exclusive false}
+  :bind-to - a map of exchange -> [binding-keys] pairs. E.g. {\"exchange-name\" [\"logs.#\"]}
+"
 	[opts]
   {:pre [(every? opts mandatory-opts)
          (sequential? (:bindings opts))
@@ -127,6 +127,19 @@
   (service! (AMQPInput. (merge default-opts opts) (atom nil) (atom nil))))
 
 (defn amqp-publisher [{:keys [exchange routing-key encoding-fn message-opts] :as opts}]
+  "Create an AMQP publisher stream.
+
+(let [amqp (amqp-publisher {:exchange \"events\" :routing-key #(str (:host %) \".\" (:service %)) :encoding-fn cheshire.core/generate-string :message-opts {:persistent false}))]
+  (streams
+...
+    amqp))
+
+options:
+
+:exchange - the exchange to publish to
+:routing-key - the routing key to use when publishing. Can be a function or a string
+:encoding-fn - a function which will be used to encode the output. encoding-fn recieves a single map object (a riemann event map) and must return an encoded byte array.
+"
   {:pre [(every? opts [:exchange :routing-key :encoding-fn])
          (fn? encoding-fn)]}
   (let [pool (publisher/get-pool (:pool-opts opts))]
