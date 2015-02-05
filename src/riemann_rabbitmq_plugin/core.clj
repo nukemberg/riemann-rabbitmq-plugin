@@ -17,19 +17,26 @@
    [riemann-rabbitmq-plugin.publisher :as publisher]))
 
 (defn logstash-parser [^bytes payload]
-  (let [msg (-> payload
-                String.
-                (json/parse-string true))]
-    (assoc msg :time (iso8601->unix (get msg (keyword "@timestamp"))))))
+  (letfn [(parse-json [^bytes p] (json/parse-string p true))
+          (fix-time [msg] (assoc msg :time (iso8601->unix (get msg (keyword "@timestamp")))))
+          (ensure-tag-vec [event] (if (sequential? (:tags event))
+                                    event
+                                    (assoc event :tags (remove empty? [(str (:tags event))]))))]
+    (-> payload
+        String.
+        parse-json
+        fix-time
+        ensure-tag-vec)))
 
 (def mandatory-opts [:bindings])
 (def default-opts {:prefetch-count 100 :connection-opts {}
-                   :parser-fn logstash-parser})
+                   :parser-fn logstash-parser
+                   :tags []})
 
 (defn- ^{:testable true} parse-message
   "Safely run the parser function and verify the resulting event"
   [parser-fn ^bytes message]
-  (debug "Parsing message with parser function" (String. message))
+  (debug "Parsing message with parser function; msg:" (String. message))
   (try
     (let [event (parser-fn message)]
       (if (and (instance? clojure.lang.Associative event) (every? keyword? (keys event)))
@@ -44,12 +51,13 @@
 
 (defn- ^{:testable true} message-handler
   "AMQP Consumer message handler. Will ack messages after submitting to riemann core and reject unparsable messages"
-  [parser-fn core ^com.rabbitmq.client.Channel ch {delivery-tag :delivery-tag :as props} ^bytes payload]
+  [parser-fn tags core ^com.rabbitmq.client.Channel ch {delivery-tag :delivery-tag :as props} ^bytes payload]
   (let [event (parse-message parser-fn payload)]
         (if event
           (do
             (debug "Submitting event to Riemann core" event)
-            (core/stream! @core event)
+            (core/stream! @core
+                          (update-in event [:tags] (comp concat) tags))
             (lb/ack ch delivery-tag))
           (do ;else
             (warn "Invalid event, rejecting")
@@ -68,7 +76,7 @@
     (locking this
       (when-not @killer
         (debug "Openning new RabbitMQ connection")
-        (let [{:keys [parser-fn bindings exchange connection-opts prefetch-count]
+        (let [{:keys [parser-fn bindings exchange connection-opts prefetch-count tags]
                :as opts
               } opts
               conn (rmq/connect connection-opts)
@@ -82,7 +90,7 @@
                 (infof "binding queue %s to exchange %s with key %s" queue-name exchange binding-key)
                 (lq/bind ch queue-name exchange {:routing-key binding-key}))
               (info "Starting RabbitMQ consumer thread")
-              (lc/subscribe ch queue-name (partial message-handler parser-fn core))))
+              (lc/subscribe ch queue-name (partial message-handler parser-fn tags core))))
           (reset! killer (fn []
                            (try
                              (when (lch/open? ch) (lch/close ch))

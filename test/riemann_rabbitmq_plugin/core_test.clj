@@ -49,11 +49,11 @@ So, TODO: refactor the code to make it easier for testing or move to core.testin
 (facts "about `message-handler`"
        (let [ack-called (atom false)
              payload (byte-array (map int "test"))
-             event {:time 12345678 :host nil :service nil}
+             event {:time 12345678 :host nil :service nil :tags []}
              delivery-tag (rand-int 100000)]
          (fact "calls core/stream! when event is correctly parsed"
                (with-redefs [lb/ack (fn [ch ^long delivery-tag] (reset! ack-called delivery-tag) nil)]
-                 (message-handler --parser-fn-- (atom ..core..) ..ch.. ..props.. payload) => nil
+                 (message-handler --parser-fn-- ..tags.. (atom ..core..) ..ch.. ..props.. payload) => nil
                  (provided
                   ..props.. =contains=> {:delivery-tag delivery-tag}
                   ;(lb/ack ..ch.. ..delivery-tag..) => nil
@@ -61,10 +61,19 @@ So, TODO: refactor the code to make it easier for testing or move to core.testin
                   (core/stream! ..core.. event) => nil)))
          (fact "when event isn't correctly parsed, don't call `core/stream!` and reject the message"
                (with-redefs [lb/reject (fn [ch ^long delivery-tag requeue] nil)]
-                 (message-handler --parser-fn-- (atom ..core..) ..ch.. ..props.. payload) => nil
+                 (message-handler --parser-fn-- ..tags.. (atom ..core..) ..ch.. ..props.. payload) => nil
                  (provided
                    ..props.. =contains=> {:delivery-tag delivery-tag}
-                  (--parser-fn-- payload) => nil)))))
+                   (--parser-fn-- payload) => nil)))
+         (fact "adds tags to event"
+               (let [tagged-event (assoc event :tags [..tag..])]
+                 (with-redefs [lb/ack (fn [ch ^long delivery-tag] nil)]
+                   (message-handler --parser-fn-- [..tag..] (atom ..core..) ..ch.. ..props.. payload) => nil
+                   (provided
+                    (core/stream! ..core.. tagged-event) => nil
+                    ..props.. =contains=> {:delivery-tag delivery-tag}
+                    (--parser-fn-- payload) => event))))
+               ))
 
 (fact "`amqp-consumer` pre checks are satisfied by the example"
        (amqp-consumer {
@@ -90,3 +99,16 @@ So, TODO: refactor the code to make it easier for testing or move to core.testin
          (fact "auto fill current time if event doesn't contain :time"
                (parse-message (fn [_] {:host nil}) payload) => {:host nil :time ..time..}
                (provided (unix-time) => ..time..))))
+
+(facts "about `logstash-parser`"
+       (fact "parses message"
+             (let [msg "{ \"tags\": [], \"type\": \"logstash\", \"@version\": \"1\", \"@timestamp\": \"2015-02-05T08:19:22.152Z\", \"source_host\": \"some-host\", \"message\": \"whatever\" }"]
+               (logstash-parser msg)) =contains=> {:tags []
+                                          :time 1423124362
+                                          :source_host "some-host"
+                                          :message "whatever"
+                                          (keyword "@version") "1"
+                                                   :type "logstash"})
+       (fact "parses message with bad tags"
+             (let [msg "{ \"tags\": \"bad-tag\", \"type\": \"logstash\", \"@version\": \"1\", \"@timestamp\": \"2015-02-05T08:19:22.152Z\", \"source_host\": \"some-host\", \"message\": \"whatever\" }"]
+               (logstash-parser msg) =contains=> {:tags ["bad-tag"]})))
