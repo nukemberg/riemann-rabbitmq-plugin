@@ -7,7 +7,9 @@ Options:
 
 :connection-opts Langhor connection options, see langohr.core/connect for more info
 :bindings a list/vector of binding specs
-:parser-fn A function to parse raw messages to clojure maps with valid keys. function signature is (parser-fn [^bytes message]), defaults to `logstash-parser`
+:parser-fn A function to parse raw messages to clojure maps with valid keys. function signature is (parser-fn [^bytes message-payload ^IPersistentMap message-metadata]).
+   message-payload is byte array of the message, message-metadata is a map of message and delivery metadata - see langohr docs (http://clojurerabbitmq.info/articles/queues.html)
+   Defaults to `logstash-parser`
 :prefetch-count - the number of messages to prefetch
 
 binding specs: a map with binding specifications:
