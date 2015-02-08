@@ -16,7 +16,7 @@
    [riemann.pool       :refer [with-pool]]
    [riemann-rabbitmq-plugin.publisher :as publisher]))
 
-(defn logstash-parser [^bytes payload]
+(defn logstash-parser [payload metadata]
   "A parser function for the Logstash v1 format. Recieves a byte array of json encoded data and returns a map suitable for use with riemann"
   (letfn [(parse-json [p] (json/parse-string p true))
           (fix-time [msg] (assoc msg :time (iso8601->unix (get msg (keyword "@timestamp")))))
@@ -36,10 +36,10 @@
 
 (defn- ^{:testable true} parse-message
   "Safely run the parser function and verify the resulting event"
-  [parser-fn ^bytes message]
+  [parser-fn message metadata]
   (debug "Parsing message with parser function; msg:" (String. message))
   (try
-    (let [event (parser-fn message)]
+    (let [event (parser-fn message metadata)]
       (if (and (instance? clojure.lang.Associative event) (every? keyword? (keys event)))
         (if (number? (:time event)) event
             (assoc event :time (unix-time)))
@@ -52,8 +52,8 @@
 
 (defn- ^{:testable true} message-handler
   "AMQP Consumer message handler. Will ack messages after submitting to riemann core and reject unparsable messages"
-  [parser-fn tags core ^com.rabbitmq.client.Channel ch {delivery-tag :delivery-tag :as props} ^bytes payload]
-  (let [event (parse-message parser-fn payload)]
+  [parser-fn tags core ch {delivery-tag :delivery-tag :as props} payload]
+  (let [event (parse-message parser-fn payload props)]
         (if event
           (do
             (debug "Submitting event to Riemann core" event)
@@ -112,7 +112,9 @@
 
   :connection-opts Langhor connection options, see langohr.core/connect for more info
   :bindings a list/vector of binding specs
-  :parser-fn A function to parse raw messages to clojure maps with valid keys. function signature is (parser-fn [^bytes message]), defaults to `logstash-parser`
+  :parser-fn A function to parse raw messages to clojure maps with valid keys. function signature is (parser-fn [^bytes message-payload ^IPersistentMap message-metadata]).
+     message-payload is byte array of the message, message-metadata is a map of message and delivery metadata - see langohr docs (http://clojurerabbitmq.info/articles/queues.html)
+     Defaults to `logstash-parser`
   :prefetch-count - the number of messages to prefetch
 
   binding specs: a map with binding specifications:

@@ -13,7 +13,7 @@ In your riemann.config
 (load-plugins) ; will load plugins from the classpath
 
 (rabbitmq-plugin/rabbitmq-consumer {
-                       :parser-fn rabbitmq-plugin/logstash-parser true) ; message parsing function, the sample function here is the default
+                       :parser-fn rabbitmq-plugin/logstash-parser ; message parsing function, the sample function here is the default
                        :prefetch-count 100 ; this is the default
                        :bindings [{
                          :opts {:durable false :auto-delete true} ; this is the default
