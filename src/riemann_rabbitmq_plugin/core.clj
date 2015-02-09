@@ -116,6 +116,7 @@
      message-payload is byte array of the message, message-metadata is a map of message and delivery metadata - see langohr docs (http://clojurerabbitmq.info/articles/queues.html)
      Defaults to `logstash-parser`
   :prefetch-count - the number of messages to prefetch
+  :tags - tags to add to a message
 
   binding specs: a map with binding specifications:
   :queue - the queue name to use. if empty an auto-generated queue name will be used
