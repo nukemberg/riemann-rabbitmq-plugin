@@ -19,7 +19,9 @@
 (defn logstash-parser [payload metadata]
   "A parser function for the Logstash v1 format. Recieves a byte array of json encoded data and returns a map suitable for use with riemann"
   (letfn [(parse-json [p] (json/parse-string p true))
-          (fix-time [msg] (assoc msg :time (iso8601->unix (get msg (keyword "@timestamp")))))
+          (fix-time [msg] (if-let [time (get msg (keyword "@timestamp"))]
+                            (assoc msg :time (iso8601->unix time))
+                            (assoc msg :time (unix-time))))
           (ensure-tag-vec [event] (if (sequential? (:tags event))
                                     event
                                     (assoc event :tags (remove empty? [(str (:tags event))]))))]

@@ -1,4 +1,4 @@
-(defproject riemann-rabbitmq-plugin "0.0.1-SNAPSHOT"
+(defproject riemann-rabbitmq-plugin "0.1.0-SNAPSHOT"
   :description "Cool new project to do things and stuff"
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [com.novemberain/langohr "3.0.0-rc2"]

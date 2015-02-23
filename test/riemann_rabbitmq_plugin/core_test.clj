@@ -104,12 +104,17 @@ So, TODO: refactor the code to make it easier for testing or move to core.testin
 (facts "about `logstash-parser`"
        (fact "parses message"
              (let [msg (byte-array (map int "{ \"tags\": [], \"type\": \"logstash\", \"@version\": \"1\", \"@timestamp\": \"2015-02-05T08:19:22.152Z\", \"source_host\": \"some-host\", \"message\": \"whatever\" }"))]
-               (logstash-parser msg ..metadata..)) =contains=> {:tags []
-                                          :time 1423124362
-                                          :source_host "some-host"
-                                          :message "whatever"
-                                          (keyword "@version") "1"
-                                                   :type "logstash"})
+               (logstash-parser msg ..metadata..)) => (contains {:tags []
+                                                                  :time 1423124362
+                                                                  :source_host "some-host"
+                                                                  :message "whatever"
+                                                                  (keyword "@version") "1"
+                                                                  :type "logstash"}))
        (fact "parses message with bad tags"
              (let [msg (byte-array (map int "{ \"tags\": \"bad-tag\", \"type\": \"logstash\", \"@version\": \"1\", \"@timestamp\": \"2015-02-05T08:19:22.152Z\", \"source_host\": \"some-host\", \"message\": \"whatever\" }"))]
-               (logstash-parser msg ..metadata..) =contains=> {:tags ["bad-tag"]})))
+               (logstash-parser msg ..metadata..) => (contains {:tags ["bad-tag"]})))
+       (fact "when no timestamp is given use currrent time"
+             (let [msg (byte-array (map int "{ \"tags\": [], \"type\": \"logstash\", \"@version\": \"1\", \"source_host\": \"some-host\", \"message\": \"whatever\" }"))]
+               (logstash-parser msg ..metadata..) => (contains {:time ..time..})
+               (provided
+                (unix-time) => ..time..))))
