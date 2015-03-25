@@ -118,3 +118,16 @@ So, TODO: refactor the code to make it easier for testing or move to core.testin
                (logstash-parser msg ..metadata..) => (contains {:time ..time..})
                (provided
                 (unix-time) => ..time..))))
+
+(facts "about `logstash-v0-parser`"
+       (fact "parses message correctly and fixes fields"
+             (let [msg (byte-array (map int "{ \"@tags\": [], \"@type\": \"logstash\", \"@timestamp\": \"2015-02-05T08:19:22.152Z\", \"@source_host\": \"some-host\", \"@message\": \"whatever\", \"@fields\": {\"some-field\": \"some-value\"}}"))]
+               (logstash-v0-parser msg ..metadata..) => (contains {:type "logstash" :host "some-host" :message "whatever" :some-field "some-value"})))
+       (fact "When @fields is empty, behave"
+             (let [msg (byte-array (map int "{ \"@tags\": [], \"@type\": \"logstash\", \"@timestamp\": \"2015-02-05T08:19:22.152Z\", \"@source_host\": \"some-host\", \"@message\": \"whatever\" }"))]
+               (logstash-v0-parser msg ..metadata..) => (contains {:type "logstash" :host "some-host" :message "whatever"})))
+       (fact "when no timestamp is given use currrent time"
+             (let [msg (byte-array (map int "{ \"@tags\": [], \"@type\": \"logstash\", \"@source_host\": \"some-host\", \"@message\": \"whatever\" }"))]
+               (logstash-parser msg ..metadata..) => (contains {:time ..time..})
+               (provided
+                (unix-time) => ..time..))))

@@ -1,35 +1,67 @@
 (ns riemann-rabbitmq-plugin.core
   (:require
-   [langohr.core       :as rmq]
-   [langohr.channel    :as lch]
-   [langohr.queue      :as lq]
-   [langohr.consumers  :as lc]
-   [langohr.basic      :as lb]
-   [riemann.core       :as core]
-   [riemann.service    :refer [Service ServiceEquiv]]
-   [riemann.time       :refer [unix-time]]
-   [riemann.common     :refer [iso8601->unix]]
-   [clojure.tools.logging :refer [warn error info infof debug]]
-   [clojure.string     :as string]
-   [cheshire.core      :as json]
-   [riemann.config     :refer [service!]]
-   [riemann.pool       :refer [with-pool]]
+   [langohr.core                      :as rmq]
+   [langohr.channel                   :as lch]
+   [langohr.queue                     :as lq]
+   [langohr.consumers                 :as lc]
+   [langohr.basic                     :as lb]
+   [riemann.core                      :as core]
+   [riemann.service                   :refer [Service ServiceEquiv]]
+   [riemann.time                      :refer [unix-time]]
+   [riemann.common                    :refer [iso8601->unix]]
+   [clojure.tools.logging             :refer [warn error info infof debug]]
+   [clojure.string                    :as string]
+   [clojure.set                       :refer [rename-keys]]
+   [cheshire.core                     :as json]
+   [riemann.config                    :refer [service!]]
+   [riemann.pool                      :refer [with-pool]]
    [riemann-rabbitmq-plugin.publisher :as publisher]))
 
-(defn logstash-parser [payload metadata]
+
+(defn- parse-json [p] (json/parse-string p true))
+
+(defn- fix-time [msg]
+   (if-let [time (get msg (keyword "@timestamp"))]
+     (assoc msg :time (iso8601->unix time))
+     (assoc msg :time (unix-time))))
+
+(defn- ensure-tag-vec [event]
+  (if (sequential? (:tags event))
+    event
+    (assoc event :tags (remove empty? [(str (:tags event))]))))
+
+(defn- fields-to-attributes [event]
+  (let [fields (get event (keyword "@fields") {})]
+    (reduce (fn [e [k v]] (assoc e k v))
+            (dissoc event (keyword "@fields"))
+            fields)))
+
+(defn- v0-to-v1 [event]
+  (rename-keys event {(keyword "@message") :message,
+                      (keyword "@tags") :tags,
+                      (keyword "@type") :type,
+                      (keyword "@source_host") :host,
+                      (keyword "@source_path") :path}))
+
+(defn logstash-parser
   "A parser function for the Logstash v1 format. Recieves a byte array of json encoded data and returns a map suitable for use with riemann"
-  (letfn [(parse-json [p] (json/parse-string p true))
-          (fix-time [msg] (if-let [time (get msg (keyword "@timestamp"))]
-                            (assoc msg :time (iso8601->unix time))
-                            (assoc msg :time (unix-time))))
-          (ensure-tag-vec [event] (if (sequential? (:tags event))
-                                    event
-                                    (assoc event :tags (remove empty? [(str (:tags event))]))))]
-    (-> payload
-        String.
-        parse-json
-        fix-time
-        ensure-tag-vec)))
+  [payload metadata]
+  (-> payload
+      String.
+      parse-json
+      fix-time
+      ensure-tag-vec))
+
+(defn logstash-v0-parser
+  "A parser function for the Logstash v0 format. Recieves a byte array of json encoded data and returns a map suitable for use with riemann"
+  [payload metadata]
+  (-> payload
+      String.
+      parse-json
+      fix-time
+      ensure-tag-vec
+      fields-to-attributes
+      v0-to-v1))
 
 (def mandatory-opts [:bindings])
 (def default-opts {:prefetch-count 100 :connection-opts {}
