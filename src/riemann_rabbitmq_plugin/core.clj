@@ -44,7 +44,7 @@
                       (keyword "@source_path") :path}))
 
 (defn logstash-parser
-  "A parser function for the Logstash v1 format. Recieves a byte array of json encoded data and returns a map suitable for use with riemann"
+  "A parser function for the Logstash v1 format. Receives a byte array of json encoded data and returns a map suitable for use with riemann"
   [payload metadata]
   (-> payload
       String.
@@ -53,7 +53,7 @@
       ensure-tag-vec))
 
 (defn logstash-v0-parser
-  "A parser function for the Logstash v0 format. Recieves a byte array of json encoded data and returns a map suitable for use with riemann"
+  "A parser function for the Logstash v0 format. Receives a byte array of json encoded data and returns a map suitable for use with riemann"
   [payload metadata]
   (-> payload
       String.
@@ -175,7 +175,7 @@ options:
 
 :exchange - the exchange to publish to
 :routing-key - the routing key to use when publishing. Can be a function or a string
-:encoding-fn - a function which will be used to encode the output. encoding-fn recieves a single map object (a riemann event map) and must return an encoded byte array.
+:encoding-fn - a function which will be used to encode the output. encoding-fn receives a single map object (a riemann event map) and must return an encoded byte array.
 "
   [{:keys [exchange routing-key encoding-fn message-opts] :as opts}]
   {:pre [(every? opts [:exchange :routing-key :encoding-fn])
