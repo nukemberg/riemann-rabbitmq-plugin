@@ -4,8 +4,8 @@ script: lein midje
 dist: trusty
 sudo: required
 jdk:
-- openjdk7
-- openjdk8
+- oraclejdk7
+- oraclejdk8
 branches:
   except:
   - gh-pages
