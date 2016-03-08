@@ -199,7 +199,7 @@
   options:
    :exchange - the exchange to publish to.
    :routing-key - the routing key to use when publishing. Can be a
-   function or a string.
+   function or a string (one could think 'queue name').
    :encoding-fn - a function which will be used to encode the input
    event. encoding-fn receives a single map object (a riemann event
    map) and must return an encoded byte array.
