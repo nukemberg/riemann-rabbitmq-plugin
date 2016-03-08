@@ -1,33 +1,61 @@
 <!DOCTYPE html>
 <html><head><link href="css/default.css" rel="stylesheet" type="text/css"><script src="js/jquery.min.js" type="text/javascript"></script><script src="js/page_effects.js" type="text/javascript"></script><title>riemann-rabbitmq-plugin.core documentation</title></head><body><div id="header"><h1><a href="index.html">Riemann-rabbitmq-plugin 0.1.0-SNAPSHOT API documentation</a></h1></div><div class="sidebar" id="namespaces"><h3><span>Namespaces</span></h3><ul><li class="current"><a href="riemann-rabbitmq-plugin.core.html"><span>riemann-rabbitmq-plugin.core</span></a></li><li><a href="riemann-rabbitmq-plugin.publisher.html"><span>riemann-rabbitmq-plugin.publisher</span></a></li></ul></div><div class="sidebar" id="vars"><h3>Public Vars</h3><ul><li><a href="riemann-rabbitmq-plugin.core.html#var--%3EAMQPInput"><span>-&gt;AMQPInput</span></a></li><li><a href="riemann-rabbitmq-plugin.core.html#var-amqp-consumer"><span>amqp-consumer</span></a></li><li><a href="riemann-rabbitmq-plugin.core.html#var-amqp-publisher"><span>amqp-publisher</span></a></li><li><a href="riemann-rabbitmq-plugin.core.html#var-logstash-parser"><span>logstash-parser</span></a></li><li><a href="riemann-rabbitmq-plugin.core.html#var-logstash-v0-parser"><span>logstash-v0-parser</span></a></li><li><a href="riemann-rabbitmq-plugin.core.html#var-map-%3EAMQPInput"><span>map-&gt;AMQPInput</span></a></li></ul></div><div class="namespace-docs" id="content"><h2>riemann-rabbitmq-plugin.core documentation</h2><pre class="doc"></pre><div class="public" id="var--%3EAMQPInput"><h3>-&gt;AMQPInput</h3><div class="usage"><code>(-&gt;AMQPInput opts core killer)</code></div><pre class="doc">Positional factory function for class riemann_rabbitmq_plugin.core.AMQPInput.
 </pre></div><div class="public" id="var-amqp-consumer"><h3>amqp-consumer</h3><div class="usage"><code>(amqp-consumer opts)</code></div><pre class="doc">Create an AMQP consumer instance. Usage:
-(amqp-consumer {:parser-fn logstash-parser :connection-opts {:host &quot;rabbitmq.example.com&quot; :port 5672} :prefetch-count 100 :bindings [{:queue &quot;riemann&quot; :bind-to {&quot;logs-exchange&quot; [&quot;#&quot;] :opts {:durable false}}]})
+(amqp-consumer {:parser-fn logstash-parser
+                :connection-opts {:host &quot;rabbitmq.example.com&quot; :port 5672}
+                :prefetch-count 100
+                :bindings [{:queue &quot;riemann&quot;
+                            :bind-to {&quot;logs-exchange&quot; [&quot;#&quot;]
+                                      :opts {:durable false}}}]})
 
 Options:
 
-:connection-opts Langhor connection options, see langohr.core/connect for more info
+:connection-opts Langhor connection options, see
+langohr.core/connect for more info.
+
 :bindings a list/vector of binding specs
-:parser-fn A function to parse raw messages to clojure maps with valid keys. function signature is (parser-fn [^bytes message-payload ^IPersistentMap message-metadata]).
-   message-payload is byte array of the message, message-metadata is a map of message and delivery metadata - see langohr docs (http://clojurerabbitmq.info/articles/queues.html)
-   Defaults to `logstash-parser`
+
+:parser-fn Defaults to `logstash-parser`. A function to parse raw
+messages to clojure maps with valid keys. function signature is:
+(parser-fn [^bytes message-payload ^IPersistentMap message-metadata])
+where:
+  message-payload is byte array of the message,
+  message-metadata is a map of message and delivery metadata - see
+  langohr docs (http://clojurerabbitmq.info/articles/queues.html).
+
 :prefetch-count - the number of messages to prefetch
 :tags - tags to add to a message
 
 binding specs: a map with binding specifications:
-:queue - the queue name to use. if empty an auto-generated queue name will be used
-:opts - options to use when declaring the queue. See langohr docs for details.  e.g. {:auto-delete false, :durable true, :exclusive false}
-:bind-to - a map of exchange -&gt; [binding-keys] pairs. E.g. {&quot;exchange-name&quot; [&quot;logs.#&quot;]}</pre></div><div class="public" id="var-amqp-publisher"><h3>amqp-publisher</h3><div class="usage"><code>(amqp-publisher {:keys [exchange routing-key encoding-fn message-opts], :as opts})</code></div><pre class="doc">Create an AMQP publisher stream.
+:queue - the queue name to use. if empty an auto-generated queue
+name will be used
 
-(let [amqp (amqp-publisher {:exchange &quot;events&quot; :routing-key #(str (:host %) &quot;.&quot; (:service %)) :encoding-fn cheshire.core/generate-string :message-opts {:persistent false}))]
+:opts - options to use when declaring the queue. See langohr docs for details.
+e.g. {:auto-delete false, :durable true, :exclusive false}
+
+:bind-to - a map of exchange -&gt; [binding-keys] pairs.
+e.g. {&quot;exchange-name&quot; [&quot;logs.#&quot;]}</pre></div><div class="public" id="var-amqp-publisher"><h3>amqp-publisher</h3><div class="usage"><code>(amqp-publisher {:keys [exchange routing-key encoding-fn message-opts], :as opts})</code></div><pre class="doc">Create an AMQP publisher stream.
+
+(let [amqp (amqp-publisher {:exchange &quot;events&quot;
+                            :routing-key #(str (:host %) &quot;.&quot; (:service %))
+                            :encoding-fn cheshire.core/generate-string
+                            :message-opts {:persistent false}))]
   (streams
-...
-    amqp))
+   ...
+   amqp))
 
 options:
-
-:exchange - the exchange to publish to
-:routing-key - the routing key to use when publishing. Can be a function or a string
-:encoding-fn - a function which will be used to encode the output. encoding-fn recieves a single map object (a riemann event map) and must return an encoded byte array.</pre></div><div class="public" id="var-logstash-parser"><h3>logstash-parser</h3><div class="usage"><code>(logstash-parser payload metadata)</code></div><pre class="doc">A parser function for the Logstash v1 format. Recieves a byte array of json encoded data and returns a map suitable for use with riemann
-</pre></div><div class="public" id="var-logstash-v0-parser"><h3>logstash-v0-parser</h3><div class="usage"><code>(logstash-v0-parser payload metadata)</code></div><pre class="doc">A parser function for the Logstash v0 format. Recieves a byte array of json encoded data and returns a map suitable for use with riemann
-</pre></div><div class="public" id="var-map-%3EAMQPInput"><h3>map-&gt;AMQPInput</h3><div class="usage"><code>(map-&gt;AMQPInput m__5869__auto__)</code></div><pre class="doc">Factory function for class riemann_rabbitmq_plugin.core.AMQPInput, taking a map of keywords to field values.
+ :exchange - the exchange to publish to.
+ :routing-key - the routing key to use when publishing. Can be a
+ function or a string (one could think 'queue name').
+ :encoding-fn - a function which will be used to encode the input
+ event. encoding-fn receives a single map object (a riemann event
+ map) and must return an encoded byte array.
+ :pool-opts - see riemann-rabbitmq-plugin.publisher/get-pool
+ :claim-timeout - a number
+ :message-opts - in the end, passed to langhor.basic/publish</pre></div><div class="public" id="var-logstash-parser"><h3>logstash-parser</h3><div class="usage"><code>(logstash-parser payload metadata)</code></div><pre class="doc">A parser function for the Logstash v1 format. Receives a byte array
+of json encoded data and returns a map suitable for use with
+riemann.</pre></div><div class="public" id="var-logstash-v0-parser"><h3>logstash-v0-parser</h3><div class="usage"><code>(logstash-v0-parser payload metadata)</code></div><pre class="doc">A parser function for the Logstash v0 format. Receives a byte array
+of json encoded data and returns a map suitable for use with
+riemann</pre></div><div class="public" id="var-map-%3EAMQPInput"><h3>map-&gt;AMQPInput</h3><div class="usage"><code>(map-&gt;AMQPInput m__5869__auto__)</code></div><pre class="doc">Factory function for class riemann_rabbitmq_plugin.core.AMQPInput, taking a map of keywords to field values.
 </pre></div></div></body></html>
