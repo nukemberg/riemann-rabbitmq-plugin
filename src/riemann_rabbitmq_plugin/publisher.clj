@@ -27,6 +27,12 @@
     (publish this exchange routing-key message {:mandatory false :immediate false})))
 
 (defn get-pool [opts]
+  "The opts map can contain the following items:
+   :pool-size passed to riemann.pool/fixed-pool as :size
+   :block-start passed to riemann.pool/fixed-pool
+   :regenerate-interval passed to riemann.pool/fixed-pool
+   :connection-opts passed to langohr.core/connect.
+  "
   (let [opts (merge default-opts opts)]
     (fixed-pool
       (fn rabbitmq-publisher-open []
