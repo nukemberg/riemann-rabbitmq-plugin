@@ -44,7 +44,9 @@
                       (keyword "@source_path") :path}))
 
 (defn logstash-parser
-  "A parser function for the Logstash v1 format. Receives a byte array of json encoded data and returns a map suitable for use with riemann"
+  "A parser function for the Logstash v1 format. Receives a byte array
+  of json encoded data and returns a map suitable for use with
+  riemann."
   [payload metadata]
   (-> payload
       String.
@@ -53,7 +55,9 @@
       ensure-tag-vec))
 
 (defn logstash-v0-parser
-  "A parser function for the Logstash v0 format. Receives a byte array of json encoded data and returns a map suitable for use with riemann"
+  "A parser function for the Logstash v0 format. Receives a byte array
+  of json encoded data and returns a map suitable for use with
+  riemann"
   [payload metadata]
   (-> payload
       String.
@@ -85,7 +89,8 @@
 
 
 (defn- ^{:testable true} message-handler
-  "AMQP Consumer message handler. Will ack messages after submitting to riemann core and reject unparsable messages"
+  "AMQP Consumer message handler. Will ack messages after submitting
+  to riemann core and reject unparsable messages."
   [parser-fn tags core ch {delivery-tag :delivery-tag :as props} payload]
   (let [event (parse-message parser-fn payload props)]
         (if event
@@ -96,8 +101,7 @@
             (lb/ack ch delivery-tag))
           (do ;else
             (warn "Invalid event, rejecting")
-            (lb/reject ch delivery-tag false))
-          )))
+            (lb/reject ch delivery-tag false)))))
 
 (defrecord AMQPInput [opts core killer]
   ServiceEquiv
@@ -140,22 +144,41 @@
 
 (defn amqp-consumer
   "Create an AMQP consumer instance. Usage:
-  (amqp-consumer {:parser-fn logstash-parser :connection-opts {:host \"rabbitmq.example.com\" :port 5672} :prefetch-count 100 :bindings [{:queue \"riemann\" :bind-to {\"logs-exchange\" [\"#\"] :opts {:durable false}}}]})
+  (amqp-consumer {:parser-fn logstash-parser
+                  :connection-opts {:host \"rabbitmq.example.com\"
+                                    :port 5672}
+                                    :prefetch-count 100
+                                    :bindings [{:queue \"riemann\"
+                                                :bind-to {\"logs-exchange\" [\"#\"]
+                                                          :opts {:durable false}}}]})
 
   Options:
 
-  :connection-opts Langhor connection options, see langohr.core/connect for more info
+  :connection-opts Langhor connection options, see
+  langohr.core/connect for more info.
+
   :bindings a list/vector of binding specs
-  :parser-fn A function to parse raw messages to clojure maps with valid keys. function signature is (parser-fn [^bytes message-payload ^IPersistentMap message-metadata]).
-     message-payload is byte array of the message, message-metadata is a map of message and delivery metadata - see langohr docs (http://clojurerabbitmq.info/articles/queues.html)
-     Defaults to `logstash-parser`
+
+  :parser-fn Defaults to `logstash-parser`. A function to parse raw
+  messages to clojure maps with valid keys. function signature is:
+  (parser-fn [^bytes message-payload ^IPersistentMap message-metadata])
+  where:
+    message-payload is byte array of the message,
+    message-metadata is a map of message and delivery metadata - see
+    langohr docs (http://clojurerabbitmq.info/articles/queues.html).
+
   :prefetch-count - the number of messages to prefetch
   :tags - tags to add to a message
 
   binding specs: a map with binding specifications:
-  :queue - the queue name to use. if empty an auto-generated queue name will be used
-  :opts - options to use when declaring the queue. See langohr docs for details.  e.g. {:auto-delete false, :durable true, :exclusive false}
-  :bind-to - a map of exchange -> [binding-keys] pairs. E.g. {\"exchange-name\" [\"logs.#\"]}
+  :queue - the queue name to use. if empty an auto-generated queue
+  name will be used
+
+  :opts - options to use when declaring the queue. See langohr docs for details.
+  e.g. {:auto-delete false, :durable true, :exclusive false}
+
+  :bind-to - a map of exchange -> [binding-keys] pairs.
+  e.g. {\"exchange-name\" [\"logs.#\"]}
 "
 	[opts]
   {:pre [(every? opts mandatory-opts)
@@ -166,16 +189,21 @@
 (defn amqp-publisher
   "Create an AMQP publisher stream.
 
-(let [amqp (amqp-publisher {:exchange \"events\" :routing-key #(str (:host %) \".\" (:service %)) :encoding-fn cheshire.core/generate-string :message-opts {:persistent false}))]
-  (streams
-...
-    amqp))
+  (let [amqp (amqp-publisher {:exchange \"events\"
+                              :routing-key #(str (:host %) \".\" (:service %))
+                              :encoding-fn cheshire.core/generate-string
+                              :message-opts {:persistent false}))]
+    (streams
+     ...
+     amqp))
 
-options:
-
-:exchange - the exchange to publish to
-:routing-key - the routing key to use when publishing. Can be a function or a string
-:encoding-fn - a function which will be used to encode the output. encoding-fn receives a single map object (a riemann event map) and must return an encoded byte array.
+  options:
+   :exchange - the exchange to publish to.
+   :routing-key - the routing key to use when publishing. Can be a
+   function or a string.
+   :encoding-fn - a function which will be used to encode the
+   output. encoding-fn receives a single map object (a riemann event
+   map) and must return an encoded byte array.
 "
   [{:keys [exchange routing-key encoding-fn message-opts] :as opts}]
   {:pre [(every? opts [:exchange :routing-key :encoding-fn])
