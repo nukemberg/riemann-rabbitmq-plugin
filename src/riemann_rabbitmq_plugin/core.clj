@@ -145,12 +145,11 @@
 (defn amqp-consumer
   "Create an AMQP consumer instance. Usage:
   (amqp-consumer {:parser-fn logstash-parser
-                  :connection-opts {:host \"rabbitmq.example.com\"
-                                    :port 5672}
-                                    :prefetch-count 100
-                                    :bindings [{:queue \"riemann\"
-                                                :bind-to {\"logs-exchange\" [\"#\"]
-                                                          :opts {:durable false}}}]})
+                  :connection-opts {:host \"rabbitmq.example.com\" :port 5672}
+                  :prefetch-count 100
+                  :bindings [{:queue \"riemann\"
+                              :bind-to {\"logs-exchange\" [\"#\"]
+                                        :opts {:durable false}}}]})
 
   Options:
 
