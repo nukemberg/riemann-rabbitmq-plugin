@@ -205,6 +205,7 @@
    map) and must return an encoded byte array.
    :pool-opts - see riemann-rabbitmq-plugin.publisher/get-pool
    :claim-timeout - a number
+   :message-opts - in the end, passed to langhor.basic/publish
 "
   [{:keys [exchange routing-key encoding-fn message-opts] :as opts}]
   {:pre [(every? opts [:exchange :routing-key :encoding-fn])
