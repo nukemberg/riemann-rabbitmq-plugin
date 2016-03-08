@@ -3,6 +3,7 @@ lein: lein2
 script: lein midje
 jdk:
 - openjdk7
+- openjdk8
 branches:
   except:
   - gh-pages
