@@ -200,9 +200,11 @@
    :exchange - the exchange to publish to.
    :routing-key - the routing key to use when publishing. Can be a
    function or a string.
-   :encoding-fn - a function which will be used to encode the
-   output. encoding-fn receives a single map object (a riemann event
+   :encoding-fn - a function which will be used to encode the input
+   event. encoding-fn receives a single map object (a riemann event
    map) and must return an encoded byte array.
+   :pool-opts - see riemann-rabbitmq-plugin.publisher/get-pool
+   :claim-timeout - a number
 "
   [{:keys [exchange routing-key encoding-fn message-opts] :as opts}]
   {:pre [(every? opts [:exchange :routing-key :encoding-fn])
