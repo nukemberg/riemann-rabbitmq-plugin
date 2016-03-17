@@ -1,4 +1,4 @@
-(defproject riemann-rabbitmq-plugin "0.1.0-SNAPSHOT"
+(defproject riemann-rabbitmq-plugin "0.1.1-SNAPSHOT"
   :description "A RabbitMQ plugin for Riemann"
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [com.novemberain/langohr "3.1.0" :exclusions [cheshire clj-http]]
